@@ -24,8 +24,12 @@
 #define PTT_ON LOW
 #define PTT_OFF HIGH
 
-#define CALLSIGN_LEN 24
 #define BUF_LEN 128
+
+#define VERSION "v1.2"
+#define CALLSIGN "N0CALL"
+#define CQZ "00"
+#define AGE "00"
 
 #include <Arduino.h>
 
@@ -38,9 +42,13 @@
 char cmdBuf[BUF_LEN];
 uint8_t cmdPos = 0;
 
-char myCallsign[CALLSIGN_LEN] = "N0CALL";
-
-const char *version = "1.1";
+static const char cqt[]    = ".. CQ CQ DE " CALLSIGN " " CALLSIGN " PSE K";
+static const char cqcont[] = ".. CQ TEST DE " CALLSIGN " " CALLSIGN " TEST";
+static const char tucls[]  = ".. TU " CALLSIGN;
+static const char tutest[] = ".. TU " CALLSIGN " TEST";
+static const char rrexch[] = ".. RR 599-599 TU";
+static const char jartsx[] = ".. RR 599-599-" AGE " TU";
+static const char cqwwx[]  = ".. RR 599-599-" CQZ " TU";
 
 /* begin baudot.h */
 
@@ -336,8 +344,8 @@ static void
 baudot_skip_warning( char char_out )
 {
     unsigned char byte = char_out;
-    fprintf(stderr, "W: baudot skipping non-encodable character '%c' 0x%02x\n",
-    char_out, byte);
+    // fprintf(stderr, "W: baudot skipping non-encodable character '%c' 0x%02x\n",
+    // char_out, byte);
 }
 
 /*
@@ -359,7 +367,7 @@ baudot_encode( unsigned int *databits_outp, char char_out )
 
     unsigned char charset_mask = baudot_encode_table[ind][1];
 
-    debug_log("I: (baudot_charset==%u)   input character '%c' 0x%02x charset_mask=%u\n", baudot_charset, char_out, char_out, charset_mask);
+    // debug_log("I: (baudot_charset==%u)   input character '%c' 0x%02x charset_mask=%u\n", baudot_charset, char_out, char_out, charset_mask);
 
     if ( (baudot_charset & charset_mask ) == 0 ) {
   if ( charset_mask == 0 ) {
@@ -380,13 +388,13 @@ baudot_encode( unsigned int *databits_outp, char char_out )
   else
       assert(0);
 
-  debug_log("I: emit charset select 0x%02X\n", databits_outp[n-1]);
+  // debug_log("I: emit charset select 0x%02X\n", databits_outp[n-1]);
     }
 
     if ( !( baudot_charset == 1 || baudot_charset == 2 ) ) {
-  fprintf(stderr, "E: baudot input character failed '%c' 0x%02x\n",
-    char_out, char_out);
-  fprintf(stderr, "E: baudot_charset==%u\n", baudot_charset);
+  // fprintf(stderr, "E: baudot input character failed '%c' 0x%02x\n",
+  //   char_out, char_out);
+  // fprintf(stderr, "E: baudot_charset==%u\n", baudot_charset);
   assert(0);
     }
 
@@ -472,9 +480,9 @@ void setup() {
   digitalWrite(PTT_PIN, PTT_OFF);
   digitalWrite(FSK_PIN, FSK_MARK);
   Serial.begin(115200);
-  Serial.print("[INFO] Arduino RTTY Keyer v");
-  Serial.print(version);
-  Serial.println(" Started. type HELP for help.");
+  Serial.print(F("[INFO] Arduino RTTY Keyer "));
+  Serial.print(VERSION);
+  Serial.println(F(" Started. type HELP for help."));
 }
 
 void send_baudot_symbol(unsigned int sym) {
@@ -505,7 +513,7 @@ void setptt(bool ptt)
 
 void send_test_pulse()
 {
-  Serial.println("[INFO] testSender: Sending test pulse");
+  Serial.println(F("[INFO] testSender: Sending test pulse"));
   rtty_bit(1);
   rtty_bit(0);
   rtty_bit(1);
@@ -519,14 +527,14 @@ void send_test_pulse()
 void loggedSend(const char *arg)
 {
   if (strlen(arg) == 0) {
-    Serial.println("[ERROR] SEND: no text");
+    Serial.println(F("[ERROR] SEND: no text"));
   }
   setptt(1);
   delay(400);
-  Serial.print("[INFO] SEND: Sending");
+  Serial.print(F("[INFO] SEND: Sending "));
   Serial.println(arg);
   tx_rtty(arg);
-  Serial.println("[INFO] SEND: Sended");
+  Serial.println(F("[INFO] SEND: Sended"));
   delay(400);
   setptt(0);
   baudot_reset();
@@ -534,52 +542,41 @@ void loggedSend(const char *arg)
 }
 
 void handleCommand(const char *cmd) {
-  Serial.print("[INFO] cmdHandler: CMD Rcvd: ");
+  Serial.print(F("[INFO] cmdHandler: CMD Rcvd: "));
   Serial.println(cmd);
 
   if (strncmp(cmd, "HELP", 4) == 0 || strncmp(cmd, "help", 4) == 0)
   {
-    Serial.println("[INFO] BEGIN HELP TEXT ----------");
-    Serial.print("      Arduino Uno RTTY Keyer v");
-    Serial.println(version);
-    // Serial.println("      Copyright (C) 2026 ZiYuan Yang (yzymc) <yzymc@yzynetwork.org> <yzymc114514@outlook.com>");
-    Serial.println("");
-    Serial.println("  Available commands:");
-    Serial.println("  HELP");
-    Serial.println("  SETCLS [CALLSIGN] Set your callsign");
-    Serial.println("  GETCLS Get your callsign");
-    Serial.println("  SEND [TEXT] Send text");
-    Serial.println("  ST Send the test pulse");
-    Serial.println("  TX PTT On");
-    Serial.println("  RX PTT Off");
-    Serial.println("[INFO] END HELP TEXT ------------");
-    return;
-  }
-
-  if (strncmp(cmd, "SETCLS", 6) == 0) {
-    const char *arg = cmd + 7;
-
-    if (strlen(arg) == 0) {
-      Serial.println("[ERROR] SETCLS: no callsign");
-      return;
-    }
-
-    strncpy(myCallsign, arg, CALLSIGN_LEN - 1);
-    myCallsign[CALLSIGN_LEN - 1] = '\0';
-
-    Serial.print("[INFO] SETCLS: Callsign set to: ");
-    Serial.println(myCallsign);
-    return;
-  }
-  if (strcmp(cmd, "GETCLS") == 0) {
-    Serial.print("[INFO] GETCLS: Callsign: ");
-    Serial.println(myCallsign);
+    Serial.println(F("[INFO] BEGIN HELP TEXT ----------"));
+    Serial.print(F("      Arduino Uno RTTY Keyer "));
+    Serial.println(VERSION);
+    Serial.println(F("      Copyright (C) 2026 ZiYuan Yang (yzymc) <yzymc@yzynetwork.org> <yzymc114514@outlook.com>"));
+    Serial.println(F(""));
+    Serial.println(F("      Available commands:"));
+    Serial.println(F("      HELP"));
+    Serial.println(F("      SEND [TEXT]          Send text"));
+    Serial.println(F("      ST                   Send the test pulse"));
+    Serial.println(F("      TX                   PTT On"));
+    Serial.println(F("      RX                   PTT Off"));
+    Serial.println(F("      CQ                   Send CQ with your callsign"));
+    Serial.println(F("      EXCH                 Send RR 599-599 TU"));
+    Serial.println(F("[INFO] END HELP TEXT ------------"));
     return;
   }
 
   if (strncmp(cmd, "SEND", 4) == 0) {
     const char *arg = cmd + 5;
     loggedSend(arg);
+    return;
+  }
+
+  if (strcmp(cmd, "CQ") == 0) {
+    loggedSend(cqt);
+    return;
+  }
+
+  if (strcmp(cmd, "EXCH") == 0) {
+    loggedSend(rrexch);
     return;
   }
 
@@ -599,7 +596,7 @@ void handleCommand(const char *cmd) {
     setptt(0);
     return;
   }
-  Serial.println("[ERROR] Unknown command, use HELP to get help.");
+  Serial.println(F("[ERROR] Unknown command, use HELP to get help."));
 }
 
 void loop() {
