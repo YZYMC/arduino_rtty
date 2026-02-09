@@ -40,7 +40,7 @@ uint8_t cmdPos = 0;
 
 char myCallsign[CALLSIGN_LEN] = "N0CALL";
 
-const char *version = "1.0";
+const char *version = "1.1";
 
 /* begin baudot.h */
 
@@ -472,6 +472,9 @@ void setup() {
   digitalWrite(PTT_PIN, PTT_OFF);
   digitalWrite(FSK_PIN, FSK_MARK);
   Serial.begin(115200);
+  Serial.print("[INFO] Arduino RTTY Keyer v");
+  Serial.print(version);
+  Serial.println(" Started. type HELP for help.");
 }
 
 void send_baudot_symbol(unsigned int sym) {
@@ -513,6 +516,23 @@ void send_test_pulse()
   rtty_bit(0);
 }
 
+void loggedSend(const char *arg)
+{
+  if (strlen(arg) == 0) {
+    Serial.println("[ERROR] SEND: no text");
+  }
+  setptt(1);
+  delay(400);
+  Serial.print("[INFO] SEND: Sending");
+  Serial.println(arg);
+  tx_rtty(arg);
+  Serial.println("[INFO] SEND: Sended");
+  delay(400);
+  setptt(0);
+  baudot_reset();
+  return;
+}
+
 void handleCommand(const char *cmd) {
   Serial.print("[INFO] cmdHandler: CMD Rcvd: ");
   Serial.println(cmd);
@@ -522,16 +542,16 @@ void handleCommand(const char *cmd) {
     Serial.println("[INFO] BEGIN HELP TEXT ----------");
     Serial.print("      Arduino Uno RTTY Keyer v");
     Serial.println(version);
-    Serial.println("      Copyright (C) 2026 ZiYuan Yang (yzymc) <yzymc@yzynetwork.org> <yzymc114514@outlook.com>");
+    // Serial.println("      Copyright (C) 2026 ZiYuan Yang (yzymc) <yzymc@yzynetwork.org> <yzymc114514@outlook.com>");
     Serial.println("");
-    Serial.println("      Available commands:");
-    Serial.println("      HELP              Get this help text");
-    Serial.println("      SETCLS [CALLSIGN] Set your callsign");
-    Serial.println("      GETCLS            Print the callsign set by SETCLS");
-    Serial.println("      SEND [TEXT]       Send the text by RTTY");
-    Serial.println("      ST                Send test pulse");
-    Serial.println("      TX                Turn PTT On");
-    Serial.println("      RX                Turn PTT Off");
+    Serial.println("  Available commands:");
+    Serial.println("  HELP");
+    Serial.println("  SETCLS [CALLSIGN] Set your callsign");
+    Serial.println("  GETCLS Get your callsign");
+    Serial.println("  SEND [TEXT] Send text");
+    Serial.println("  ST Send the test pulse");
+    Serial.println("  TX PTT On");
+    Serial.println("  RX PTT Off");
     Serial.println("[INFO] END HELP TEXT ------------");
     return;
   }
@@ -559,19 +579,7 @@ void handleCommand(const char *cmd) {
 
   if (strncmp(cmd, "SEND", 4) == 0) {
     const char *arg = cmd + 5;
-
-    if (strlen(arg) == 0) {
-      Serial.println("[ERROR] SEND: no text");
-    }
-    setptt(1);
-    delay(400);
-    Serial.print("[INFO] SEND: Sending");
-    Serial.println(arg);
-    tx_rtty(arg);
-    Serial.println("[INFO] SEND: Sended");
-    delay(400);
-    setptt(0);
-    baudot_reset();
+    loggedSend(arg);
     return;
   }
 
