@@ -26,7 +26,7 @@
 
 #define BUF_LEN 128
 
-#define VERSION "v1.2"
+#define VERSION "v1.3"
 #define CALLSIGN "N0CALL"
 #define CQZ "00"
 #define AGE "00"
@@ -47,8 +47,8 @@ static const char cqcont[] = ".. CQ TEST DE " CALLSIGN " " CALLSIGN " TEST";
 static const char tucls[]  = ".. TU " CALLSIGN;
 static const char tutest[] = ".. TU " CALLSIGN " TEST";
 static const char rrexch[] = ".. RR 599-599 TU";
-static const char jartsx[] = ".. RR 599-599-" AGE " TU";
-static const char cqwwx[]  = ".. RR 599-599-" CQZ " TU";
+static const char jartsx[] = ".. RR 599-" AGE "-" AGE " TU";
+static const char cqwwx[]  = ".. RR 599-" CQZ "-" CQZ " TU";
 
 /* begin baudot.h */
 
@@ -548,8 +548,7 @@ void handleCommand(const char *cmd) {
   if (strncmp(cmd, "HELP", 4) == 0 || strncmp(cmd, "help", 4) == 0)
   {
     Serial.println(F("[INFO] BEGIN HELP TEXT ----------"));
-    Serial.print(F("      Arduino Uno RTTY Keyer "));
-    Serial.println(VERSION);
+    Serial.println(F("      Arduino Uno RTTY Keyer " VERSION));
     Serial.println(F("      Copyright (C) 2026 ZiYuan Yang (yzymc) <yzymc@yzynetwork.org> <yzymc114514@outlook.com>"));
     Serial.println(F(""));
     Serial.println(F("      Available commands:"));
@@ -558,8 +557,16 @@ void handleCommand(const char *cmd) {
     Serial.println(F("      ST                   Send the test pulse"));
     Serial.println(F("      TX                   PTT On"));
     Serial.println(F("      RX                   PTT Off"));
+    Serial.println(F(""));
+    Serial.println(F("      Macros:"));
     Serial.println(F("      CQ                   Send CQ with your callsign"));
-    Serial.println(F("      EXCH                 Send RR 599-599 TU"));
+    Serial.println(F("      CQT                  Send CQ TEST with your callsign"));
+    Serial.println(F("      X                    Send RR 599-599 TU"));
+    Serial.println(F("      XW                   Send RR 599-[CQZ]-[CQZ] TU"));
+    Serial.println(F("      XJ                   Send RR 599-[AGE]-[AGE] TU"));
+    Serial.println(F("      TU                   Send TU"));
+    Serial.println(F("      TT                   Send TU [CALLSIGN] TEST"));
+    Serial.println(F("      TC                   Send TU [CALLSIGN]"));
     Serial.println(F("[INFO] END HELP TEXT ------------"));
     return;
   }
@@ -575,8 +582,38 @@ void handleCommand(const char *cmd) {
     return;
   }
 
-  if (strcmp(cmd, "EXCH") == 0) {
+  if (strcmp(cmd, "CQT") == 0) {
+    loggedSend(cqcont);
+    return;
+  }
+
+  if (strcmp(cmd, "X") == 0) {
     loggedSend(rrexch);
+    return;
+  }
+
+  if (strcmp(cmd, "XW") == 0) {
+    loggedSend(cqwwx);
+    return;
+  }
+
+  if (strcmp(cmd, "XJ") == 0) {
+    loggedSend(jartsx);
+    return;
+  }
+
+  if (strcmp(cmd, "TU") == 0) {
+    loggedSend(".. TU");
+    return;
+  }
+
+  if (strcmp(cmd, "TT") == 0) {
+    loggedSend(tutest);
+    return;
+  }
+
+  if (strcmp(cmd, "TC") == 0) {
+    loggedSend(tucls);
     return;
   }
 
