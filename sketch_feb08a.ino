@@ -23,10 +23,14 @@
 #define PTT_PIN 8
 #define PTT_ON LOW
 #define PTT_OFF HIGH
+#define L_PIN_1 6
+#define L_PIN_2 5
+#define LED_TX 7
+#define LED_RX 4
 
 #define BUF_LEN 128
 
-#define VERSION "v1.3"
+#define VERSION "v2.0"
 #define CALLSIGN "N0CALL"
 #define CQZ "00"
 #define AGE "00"
@@ -475,10 +479,16 @@ void tx_rtty(const char *st) {
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(FSK_PIN, OUTPUT);
-  pinMode(PTT_PIN, OUTPUT);
-  digitalWrite(PTT_PIN, PTT_OFF);
-  digitalWrite(FSK_PIN, FSK_MARK);
+  pinMode(FSK_PIN, INPUT_PULLUP);
+  pinMode(PTT_PIN, INPUT_PULLUP);
+  pinMode(L_PIN_1, OUTPUT);
+  pinMode(L_PIN_2, OUTPUT);
+  pinMode(LED_TX, OUTPUT);
+  pinMode(LED_RX, OUTPUT);
+  digitalWrite(L_PIN_1, LOW);
+  digitalWrite(L_PIN_2, LOW);
+  digitalWrite(LED_TX, LOW);
+  digitalWrite(LED_RX, HIGH);
   Serial.begin(115200);
   Serial.print(F("[INFO] Arduino RTTY Keyer "));
   Serial.print(VERSION);
@@ -508,7 +518,22 @@ void setptt(bool ptt)
 {
   Serial.print("[INFO] PTT: ");
   Serial.println(ptt ? "ON" : "OFF");
-  digitalWrite(PTT_PIN, ptt ? PTT_ON : PTT_OFF);
+  if (ptt)
+  {
+    pinMode(PTT_PIN, OUTPUT);
+    pinMode(FSK_PIN, OUTPUT);
+    digitalWrite(PTT_PIN, PTT_ON);
+    digitalWrite(FSK_PIN, FSK_MARK);
+    digitalWrite(LED_TX, HIGH);
+    digitalWrite(LED_RX, LOW);
+  }
+  if (!ptt)
+  {
+    pinMode(PTT_PIN, INPUT_PULLUP);
+    pinMode(FSK_PIN, INPUT_PULLUP);
+    digitalWrite(LED_TX, LOW);
+    digitalWrite(LED_RX, HIGH);
+  }
 }
 
 void send_test_pulse()
@@ -636,6 +661,19 @@ void handleCommand(const char *cmd) {
   Serial.println(F("[ERROR] Unknown command, use HELP to get help."));
 }
 
+void update_led() {
+    if (digitalRead(PTT_PIN) == PTT_ON)
+    {
+      digitalWrite(LED_TX, HIGH);
+      digitalWrite(LED_RX, LOW);
+    }
+    else
+    {
+      digitalWrite(LED_TX, LOW);
+      digitalWrite(LED_RX, HIGH);
+    }
+}
+
 void loop() {
   // put your main code here, to run repeatedly:
   if (Serial.available() > 0) {
@@ -653,4 +691,6 @@ void loop() {
       }
     }
   }
+
+  update_led();
 }
